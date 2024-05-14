@@ -1,0 +1,710 @@
+Left Factoring:
+
+#include <iostream>
+#include <string>
+
+using namespace std;
+
+void eliminateLeftFactoring(string& production1, string& production2) {
+    int i = 0;
+    while (production1[i] == production2[i]) {
+        i++;
+    }
+
+    string commonPrefix = production1.substr(0, i);
+    string newNonTerminal = "X"; // New non-terminal symbol
+
+    cout << "New Productions:" << endl;
+    cout << "X -> " << commonPrefix << newNonTerminal << "'" << endl;
+    cout << newNonTerminal << "' -> " << production1.substr(i) << " | " << production2.substr(i) << endl;
+}
+
+int main() {
+    string production1 = "abcdE";
+    string production2 = "abcdF";
+
+    cout << "Original Productions:" << endl;
+    cout << "1. " << production1 << endl;
+    cout << "2. " << production2 << endl;
+
+    eliminateLeftFactoring(production1, production2);
+
+    return 0;
+}
+
+
+First and follow: 
+
+#include <iostream>
+#include <vector>
+#include <unordered_map>
+#include <set>
+
+using namespace std;
+
+unordered_map<char, vector<string>> productions = {
+    {'S', {"AB"}},
+    {'A', {"aA", ""}},
+    {'B', {"bB", ""}}
+};
+
+// Function to calculate First set for a non-terminal symbol
+set<char> calculateFirst(char nonTerminal) {
+    set<char> firstSet;
+    
+    // If non-terminal is a terminal, return itself
+    if (!productions.count(nonTerminal)) {
+        firstSet.insert(nonTerminal);
+        return firstSet;
+    }
+    
+    for (const string& production : productions[nonTerminal]) {
+        char symbol = production[0];
+        
+        // If symbol is a terminal, add it to First set
+        if (!productions.count(symbol)) {
+            firstSet.insert(symbol);
+        } 
+        // If symbol is a non-terminal, calculate its First set
+        else {
+            set<char> symbolFirstSet = calculateFirst(symbol);
+            firstSet.insert(symbolFirstSet.begin(), symbolFirstSet.end());
+        }
+    }
+    
+    return firstSet;
+}
+
+// Function to calculate Follow set for a non-terminal symbol
+set<char> calculateFollow(char nonTerminal) {
+    set<char> followSet;
+    
+    // Starting symbol has '$' (end marker) in its Follow set
+    if (nonTerminal == 'S') {
+        followSet.insert('$');
+    }
+    
+    // Iterate through productions to find occurrences of the non-terminal
+    for (const auto& entry : productions) {
+        char leftSide = entry.first;
+        const vector<string>& rightSides = entry.second;
+        
+        for (const string& rightSide : rightSides) {
+            size_t pos = rightSide.find(nonTerminal);
+            while (pos != string::npos) {
+                // If non-terminal is at the end, follow its left-hand side
+                if (pos == rightSide.size() - 1) {
+                    if (leftSide != nonTerminal) {
+                        set<char> leftFollowSet = calculateFollow(leftSide);
+                        followSet.insert(leftFollowSet.begin(), leftFollowSet.end());
+                    }
+                } 
+                // If non-terminal is followed by a terminal, add it to Follow set
+                else if (!productions.count(rightSide[pos + 1])) {
+                    followSet.insert(rightSide[pos + 1]);
+                } 
+                // If non-terminal is followed by a non-terminal, add First set of that non-terminal
+                else {
+                    set<char> firstSet = calculateFirst(rightSide[pos + 1]);
+                    followSet.insert(firstSet.begin(), firstSet.end());
+                    // If First set contains epsilon, follow its left-hand side
+                    if (firstSet.find('') != firstSet.end()) {
+                        if (leftSide != nonTerminal) {
+                            set<char> leftFollowSet = calculateFollow(leftSide);
+                            followSet.insert(leftFollowSet.begin(), leftFollowSet.end());
+                        }
+                    }
+                }
+                pos = rightSide.find(nonTerminal, pos + 1);
+            }
+        }
+    }
+    
+    return followSet;
+}
+
+int main() {
+    // Calculate and print First and Follow sets for each non-terminal
+    for (const auto& entry : productions) {
+        char nonTerminal = entry.first;
+        cout << "First(" << nonTerminal << "): ";
+        set<char> firstSet = calculateFirst(nonTerminal);
+        for (char symbol : firstSet) {
+            cout << symbol << " ";
+        }
+        cout << endl;
+        
+        cout << "Follow(" << nonTerminal << "): ";
+        set<char> followSet = calculateFollow(nonTerminal);
+        for (char symbol : followSet) {
+            cout << symbol << " ";
+        }
+        cout << endl << endl;
+    }
+    
+    return 0;
+}
+
+
+Left Recursion:
+
+#include <iostream>
+#include <string>
+
+using namespace std;
+
+bool isTerminal(char c) {
+    return (c >= 'a' && c <= 'z');
+}
+
+bool S(string input, int &pos);
+bool S_prime(string input, int &pos);
+bool A(string input, int &pos);
+
+bool S(string input, int &pos) {
+    if (A(input, pos)) {
+        return S_prime(input, pos);
+    }
+    return false;
+}
+
+bool S_prime(string input, int &pos) {
+    if (input[pos] == '+') {
+        pos++;
+        if (A(input, pos)) {
+            return S_prime(input, pos);
+        } else {
+            return false;
+        }
+    } else {
+        return true;
+    }
+}
+
+bool A(string input, int &pos) {
+    if (isTerminal(input[pos])) {
+        pos++;
+        return true;
+    }
+    return false;
+}
+
+int main() {
+    string input;
+    cout << "Enter string: ";
+    cin >> input;
+
+    int pos = 0;
+    if (S(input, pos) && pos == input.length()) {
+        cout << "String is accepted by the grammar." << endl;
+    } else {
+        cout << "String is not accepted by the grammar." << endl;
+    }
+
+    return 0;
+}
+
+
+
+Week 3 : Flex
+
+%{
+#include <stdio.h>
+#include<string.h>
+%}
+
+%option noyywrap
+
+%x INCLUDE
+%x DEFINE
+
+DIGIT [0-9]
+WS [ \t\n]+
+ALPHA [a-z]|[A-Z]
+%%
+
+
+{DIGIT}+        { printf("Number: %s\n", yytext); }
+{WS}            /* Skip whitespace */
+if|else|then|while|for|printf|scanf {printf("%s is a Keyword\n",yytext);}
+{ALPHA}+ {printf("Identifier: %s\n",yytext);}
+"+"             { printf("Add\n"); }
+"-"             { printf("Subtract\n"); }
+"*"             { printf("Multiply\n"); }
+"/"             { printf("Divide\n"); }
+"("             { printf("Opening Parenthesis\n"); }
+")"             { printf("Closing Parenthesis\n"); }
+"="             {printf ("Assignment: %s\n", yytext);}
+"if"            {printf ("Condition: %s\n", yytext);}
+.               {/*ignore*/ }
+
+%%
+
+int main(int argc, char** argv) {
+    yylex();
+    return 0;
+}
+
+
+week 4 : Bison
+
+test.l:
+%{
+#include <stdio.h>
+#include <string.h>
+#include "test.tab.h"
+void showError();
+%}
+
+
+numbers     ([0-9])+
+alpha       ([a-zA-Z])+
+
+%%
+
+{alpha}			   {sscanf(yytext, "%s", yylval.name); return (STRING);}
+{numbers}      {yylval.number = atoi(yytext); return (NUM);}
+";"      		   {return (SEMICOLON);}
+.      		     {showError(); return(OTHER);}
+
+%%
+
+
+void showError(){
+    printf("Other input");
+}
+int yywrap(){
+    return 1;
+}
+
+test.y:
+
+%{
+#include <stdio.h>
+
+int yylex();
+int yyerror(char *s);
+
+%}
+
+%token STRING NUM OTHER SEMICOLON
+
+%type <name> STRING
+%type <number> NUM
+
+%union{
+ char name[20];
+    int number;
+}
+
+%%
+
+prog:
+  stmts
+;
+
+stmts:
+| stmt SEMICOLON stmts
+
+stmt:
+STRING {
+printf("Your entered a string - %s", $1);
+}
+| NUM {
+printf("The number you entered is - %d", $1);
+}
+| OTHER
+;
+
+%%
+
+int yyerror(char *s)
+{
+printf("Syntax Error on line %s\n", s);
+return 0;
+}
+
+int main()
+{
+    yyparse();
+    return 0;
+}
+
+
+cd mingw/bin/win_bison_flex
+win_flex test.l
+win_bison -d test.y
+gcc lex.yy.c test.tab.c
+a.exe
+1234
+The number you entered is 1234
+
+
+
+week 5 : Top Down Parsing
+
+#include <stdio.h>
+#include <string.h>
+#include <ctype.h>
+
+#define MAX_LENGTH 100
+
+char input[MAX_LENGTH];
+int i, error;
+
+// Function prototypes
+void E();
+void T();
+void Eds();
+void Tds();
+void F();
+
+int main()
+{
+    printf("Recursive descent parsing for grammar\n");
+    printf("\nGrammar:\nE -> TE'\nE' -> +TE' | ε\nT -> FT'\nT' -> *FT' | ε\nF -> (E) | ID\n\n");
+
+    printf("Enter input string: ");
+    fgets(input, sizeof(input), stdin);
+
+    // Remove newline character from input
+    input[strcspn(input, "\n")] = '\0';
+
+    E();
+
+    if (input[i] == '\0' && error == 0)
+    {
+        printf("String is Accepted\n");
+    }
+    else
+    {
+        printf("String rejected\n");
+    }
+
+    return 0;
+}
+
+void E()
+{
+    T();
+    Eds();
+}
+
+void T()
+{
+    F();
+    Tds();
+}
+
+void Eds()
+{
+    if (input[i] == '+')
+    {
+        i++;
+        T();
+        Eds();
+    }
+}
+
+void Tds()
+{
+    if (input[i] == '*')
+    {
+        i++;
+        F();
+        Tds();
+    }
+}
+
+void F()
+{
+    if (input[i] == '(')
+    {
+        i++;
+        E();
+        if (input[i] == ')')
+        {
+            i++;
+        }
+        else
+        {
+            error = 1;
+        }
+    }
+    else if (isalpha((unsigned char)input[i]))
+    {
+        i++;
+    }
+    else
+    {
+        error = 1;
+    }
+}
+
+
+Week 6 : Bottom up
+
+#include <iostream>
+#include <vector>
+#include <string>
+using namespace std;
+
+int n;
+string s;
+vector<char> st;
+vector<char> a;
+
+void StackAndInput(int i)
+{
+    cout << "$";
+    for (auto x : st)
+        cout << x;
+    cout << "\t";
+    for (int j = i; j < n; j++)
+        cout << a[j];
+    cout << "\t";
+}
+
+void check()
+{
+    for (int i = 0; i < st.size(); i++)
+    {
+        if (st[i] == 'a')
+        {
+            st[i] = 'E';
+            StackAndInput(i + 1);
+            cout << "REDUCE E->a\n";
+            check();
+        }
+        if (i + 2 < st.size() && st[i] == 'E' && (st[i + 1] == ('+') || st[i + 1] == ('*')) && st[i + 2] == 'E')
+        {
+            st.pop_back();
+            st.pop_back();
+            StackAndInput(i + 1);
+            if (st[i + 1] == '+')
+                cout << "REDUCE E->E+E\n";
+            else if (st[i + 1] == '*')
+                cout << "REDUCE E->E*E\n";
+        }
+    }
+}
+
+int main()
+{
+    cout << "GRAMMAR is : \n E->E+E \n E->E*E \n E->a\n";
+    cout << "Enter input string: ";
+    cin >> s;
+    n = s.length();
+    for (int i = 0; i < n; i++)
+        a.push_back(s[i]);
+
+    cout << "\nstack\tinput\taction\n";
+    for (int i = 0; i < n; i++)
+    {
+        st.push_back(a[i]);
+        a[i] = ' '; // replace element with space so that it not visible in output
+        StackAndInput(i + 1);
+        cout << "SHIFT->" << st.back() << "\n";
+        check();
+    }
+    if (st.size() == 1 && st[0] == 'E')
+        cout << "\nstring accepted\n";
+    else
+        cout << "\nstring rejected\n";
+}
+
+
+Week 7 : Basic Java
+
+Factorial:
+public class FactorialCalculator {
+    public static void main(String[] args) {
+        int number = 5;
+        long factorial = calculateFactorial(number);
+        System.out.println("Factorial of " + number + " is: " + factorial);
+    }
+
+    public static long calculateFactorial(int n) {
+        if (n == 0 || n == 1) {
+            return 1;
+        } else {
+            return n * calculateFactorial(n - 1);
+        }
+    }
+}
+
+Fibonacci:
+import java.util.Scanner;
+
+public class FibonacciCalculator {
+    public static void main(String[] args) {
+        Scanner scanner = new Scanner(System.in);
+        System.out.print("Enter the number of terms: ");
+        int numTerms = scanner.nextInt();
+
+        System.out.println("Fibonacci sequence:");
+        for (int i = 0; i < numTerms; i++) {
+            System.out.print(fibonacci(i) + " ");
+        }
+        scanner.close();
+    }
+   
+    public static int fibonacci(int n) {
+        if (n <= 1) {
+            return n;
+        } else {
+            return fibonacci(n - 1) + fibonacci(n - 2);
+        }
+    }
+}
+
+
+Week 8: Syntax Tree
+
+#include <stdio.h>
+#include <stdlib.h>
+
+typedef struct Node {
+    char data;
+    struct Node* left;
+    struct Node* right;
+} Node;
+
+Node* createNode(char data) {
+    Node* newNode = (Node*)malloc(sizeof(Node));
+    newNode->data = data;
+    newNode->left = NULL;
+    newNode->right = NULL;
+    return newNode;
+}
+
+int evaluate(Node* root) {
+    if (root == NULL)
+        return 0;
+   
+    if (root->left == NULL && root->right == NULL)
+        return root->data-'0';
+   
+    int leftValue = evaluate(root->left);
+    int rightValue = evaluate(root->right);
+   
+    switch (root->data) {
+        case '+':
+            return leftValue + rightValue;
+        case '-':
+            return leftValue - rightValue;
+        case '*':
+            return leftValue * rightValue;
+        case '/':
+            if (rightValue != 0)
+                return leftValue / rightValue;
+            else {
+                printf("Error: Division by zero\n");
+                exit(EXIT_FAILURE);
+            }
+        default:
+            printf("Error: Invalid operator\n");
+            exit(EXIT_FAILURE);
+    }
+}
+
+int main() {
+    Node* root = createNode('*');
+    root->left = createNode('+');
+    root->right = createNode('-');
+    root->left->left = createNode('4');
+    root->left->right = createNode('5');
+    root->right->left = createNode('6');
+    root->right->right = createNode('3');
+
+    printf("Infix Expression: ((4 + 5)*(6 - 3))");
+    printf("\n");
+
+    int result = evaluate(root);
+    printf("Result: %d\n", result);
+
+    return 0;
+}
+
+
+Week 9 : Intermediate Code Generation
+
+#include <iostream>
+#include <string>
+
+using namespace std;
+
+void generateIfElse(string condition, string trueLabel, string falseLabel, string endLabel) {
+    cout << "IF " << condition << " GOTO " << trueLabel << endl;
+    cout << "GOTO " << falseLabel << endl;
+    cout << trueLabel << ": " << "cout << \"Condition is true.\";" << endl;
+    cout << "GOTO " << endLabel << endl;
+    cout << falseLabel << ": " << "cout << \"Condition is false.\";" << endl;
+}
+void generateNestedWhile(string condition1, string condition2, string startLabel, string endLabel) {
+    cout << startLabel << ": IF " << condition1 << " GOTO " << endLabel << endl;
+    cout << "cout << \"Loop body executed.\";" << endl;
+    cout << "IF " << condition2 << " GOTO " << startLabel << endl;
+}
+
+int main() {
+    generateIfElse("x > 0", "trueLabel", "falseLabel", "endLabel");
+    generateNestedWhile("x > 0", "y < 10", "startLabel", "endLabel");
+
+    return 0;
+}
+
+ 
+week 10 : MIPS
+
+.data
+str:  .asciiz "\nHello World!\n"  
+.text
+.globl main  # Declaring main as a global function
+
+main:
+    li $t0, 30  
+    li $t1, 20    
+    add $a0, $t0, $t1  
+
+    li $v0, 1        
+    syscall  
+
+    la $a0, str      
+    li $v0, 4        
+    syscall        
+
+    li $v0, 0        
+    jr $ra   
+
+
+week 11 : Machine Code Generation
+
+import java.io.IOException;
+
+public class GenerateMachineCode {
+    public static void main(String[] args) throws IOException {
+        byte[] machineCode = new byte[4];
+        machineCode[0] = (byte) 0x0;
+        machineCode[1] = (byte) 0x0;
+        machineCode[2] = (byte) 0x80;
+        machineCode[3] = (byte) 0x21;
+       
+        try (FileOutputStream fos = new FileOutputStream("machine_code.bin")) {
+            fos.write(machineCode);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+       	System.out.println("Machine code generated and written to 'machine_code.bin' file.");
+        } catch (Exception e) {
+            e.printStackTrace();
+
+        System.out.println("Assembly Statement: add $a0, $a0, $a1");
+       
+        StringBuilder machineStatement = new StringBuilder();
+        for (byte b : machineCode) {
+            machineStatement.append(String.format("%8s", Integer.toBinaryString(b & 0xFF)).replace(' ', '0'));
+        }
+        System.out.println("Machine Statement: " + machineStatement.toString());
+    }
+}        
