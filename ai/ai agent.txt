@@ -1,0 +1,37 @@
+ai agent
+
+class VacuumAgent:
+    def __init__(self):
+        self.location = 1  # Starting location of the vacuum cleaner
+
+    def perceive(self, location, status):
+        if status == "Dirty":
+            return "Suck"
+        elif location == 1:
+            return "Right"
+        else:
+            return "Left"
+
+    def act(self, action):
+        if action == "Suck":
+            print("Vacuum cleaner is cleaning")
+        elif action == "Right":
+            print("Vacuum cleaner is moving right")
+            self.location = 2
+        elif action == "Left":
+            print("Vacuum cleaner is moving left")
+            self.location = 1
+
+# Environment simulation
+def environment():
+    status = {"1": "Clean", "2": "Dirty"}  # Initial status of locations
+    agent = VacuumAgent()
+
+    for i in range(2):  # Simulate 2 iterations
+        print("Location:", agent.location)
+        percept = agent.perceive(agent.location, status[str(agent.location)])
+        print("Percept:", percept)
+        agent.act(percept)
+        status[str(agent.location)] = "Clean"  # After action, set location to clean
+
+environment()
