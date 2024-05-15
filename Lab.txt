@@ -12,9 +12,9 @@ void eliminateLeftFactoring(string& production1, string& production2) {
     }
 
     string commonPrefix = production1.substr(0, i);
-    string newNonTerminal = "X"; // New non-terminal symbol
+    string newNonTerminal = "X";
 
-    cout << "New Productions:" << endl;
+    cout << "\nNew Productions: " << endl;
     cout << "X -> " << commonPrefix << newNonTerminal << "'" << endl;
     cout << newNonTerminal << "' -> " << production1.substr(i) << " | " << production2.substr(i) << endl;
 }
@@ -24,16 +24,15 @@ int main() {
     string production2 = "abcdF";
 
     cout << "Original Productions:" << endl;
-    cout << "1. " << production1 << endl;
-    cout << "2. " << production2 << endl;
-
+    cout << "X -> "<<production1<<" | "<<production2<<endl;
     eliminateLeftFactoring(production1, production2);
 
     return 0;
 }
 
 
-First and follow: 
+
+//First and follow
 
 #include <iostream>
 #include <vector>
@@ -48,11 +47,9 @@ unordered_map<char, vector<string>> productions = {
     {'B', {"bB", ""}}
 };
 
-// Function to calculate First set for a non-terminal symbol
 set<char> calculateFirst(char nonTerminal) {
     set<char> firstSet;
     
-    // If non-terminal is a terminal, return itself
     if (!productions.count(nonTerminal)) {
         firstSet.insert(nonTerminal);
         return firstSet;
@@ -61,11 +58,9 @@ set<char> calculateFirst(char nonTerminal) {
     for (const string& production : productions[nonTerminal]) {
         char symbol = production[0];
         
-        // If symbol is a terminal, add it to First set
         if (!productions.count(symbol)) {
             firstSet.insert(symbol);
         } 
-        // If symbol is a non-terminal, calculate its First set
         else {
             set<char> symbolFirstSet = calculateFirst(symbol);
             firstSet.insert(symbolFirstSet.begin(), symbolFirstSet.end());
@@ -75,16 +70,13 @@ set<char> calculateFirst(char nonTerminal) {
     return firstSet;
 }
 
-// Function to calculate Follow set for a non-terminal symbol
 set<char> calculateFollow(char nonTerminal) {
     set<char> followSet;
     
-    // Starting symbol has '$' (end marker) in its Follow set
     if (nonTerminal == 'S') {
         followSet.insert('$');
     }
     
-    // Iterate through productions to find occurrences of the non-terminal
     for (const auto& entry : productions) {
         char leftSide = entry.first;
         const vector<string>& rightSides = entry.second;
@@ -92,43 +84,35 @@ set<char> calculateFollow(char nonTerminal) {
         for (const string& rightSide : rightSides) {
             size_t pos = rightSide.find(nonTerminal);
             while (pos != string::npos) {
-                // If non-terminal is at the end, follow its left-hand side
-                if (pos == rightSide.size() - 1) {
-                    if (leftSide != nonTerminal) {
-                        set<char> leftFollowSet = calculateFollow(leftSide);
-                        followSet.insert(leftFollowSet.begin(), leftFollowSet.end());
-                    }
+                char nextSymbol = (pos < rightSide.size() - 1) ? rightSide[pos + 1] : '$';
+        
+                if (pos == rightSide.size() - 1 && leftSide != nonTerminal) {
+                    set<char> leftFollowSet = calculateFollow(leftSide);
+                    followSet.insert(leftFollowSet.begin(), leftFollowSet.end());
                 } 
-                // If non-terminal is followed by a terminal, add it to Follow set
-                else if (!productions.count(rightSide[pos + 1])) {
-                    followSet.insert(rightSide[pos + 1]);
+                else if (!isupper(nextSymbol)) {
+                    followSet.insert(nextSymbol);
                 } 
-                // If non-terminal is followed by a non-terminal, add First set of that non-terminal
                 else {
-                    set<char> firstSet = calculateFirst(rightSide[pos + 1]);
+                    set<char> firstSet = calculateFirst(nextSymbol);
                     followSet.insert(firstSet.begin(), firstSet.end());
-                    // If First set contains epsilon, follow its left-hand side
-                    if (firstSet.find('') != firstSet.end()) {
-                        if (leftSide != nonTerminal) {
-                            set<char> leftFollowSet = calculateFollow(leftSide);
-                            followSet.insert(leftFollowSet.begin(), leftFollowSet.end());
-                        }
-                    }
                 }
                 pos = rightSide.find(nonTerminal, pos + 1);
-            }
         }
+}
+
     }
     
     return followSet;
 }
 
 int main() {
-    // Calculate and print First and Follow sets for each non-terminal
     for (const auto& entry : productions) {
         char nonTerminal = entry.first;
+
         cout << "First(" << nonTerminal << "): ";
         set<char> firstSet = calculateFirst(nonTerminal);
+
         for (char symbol : firstSet) {
             cout << symbol << " ";
         }
@@ -655,27 +639,19 @@ int main() {
 }
 
  
-week 10 : MIPS
+week 10 : MIPS (a = b + c)
 
 .data
-str:  .asciiz "\nHello World!\n"  
+    b: .word 10
+    c: .word 20
+    a: .word 0
+
 .text
-.globl main  # Declaring main as a global function
-
-main:
-    li $t0, 30  
-    li $t1, 20    
-    add $a0, $t0, $t1  
-
-    li $v0, 1        
-    syscall  
-
-    la $a0, str      
-    li $v0, 4        
-    syscall        
-
-    li $v0, 0        
-    jr $ra   
+    main:
+        lw $t0, b
+        lw $t1, c
+        add $t2, $t0, $t1
+        sw $t2, a
 
 
 week 11 : Machine Code Generation
